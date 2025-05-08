@@ -26,24 +26,31 @@ def build_rnn_model(word_index):
     Build an RNN-based model for emotion detection.
 
     Args:
-        word_index: Dictionary mapping words to indices
+        word_index: Dictionary mapping words to indices or an integer representing vocabulary size
 
     Returns:
-        Compiled RNN model
+        Compiled an RNN model
     """
     print("Building RNN model...")
 
     # Input layer
     input_layer = Input(shape=(MAX_SEQUENCE_LENGTH,))
 
+    # Determine vocabulary size
+    if isinstance(word_index, int):
+        vocab_size = word_index
+    else:
+        vocab_size = len(word_index) + 1
+
     # Embedding layer
-    embedding_layer = Embedding(len(word_index) + 1,
+    embedding_layer = Embedding(vocab_size,
                                EMBEDDING_DIM,
                                input_length=MAX_SEQUENCE_LENGTH)(input_layer)
 
     # Bidirectional LSTM layers
-    lstm_layer = Bidirectional(LSTM(128, return_sequences=True))(embedding_layer)
-    lstm_layer = Bidirectional(LSTM(64))(lstm_layer)
+    # Use implementation=1 to avoid CuDNN compatibility issues
+    lstm_layer = Bidirectional(LSTM(128, return_sequences=True, implementation=1))(embedding_layer)
+    lstm_layer = Bidirectional(LSTM(64, implementation=1))(lstm_layer)
 
     # Dense layers with dropout for regularization
     dense_layer = Dense(128, activation='relu')(lstm_layer)
@@ -53,8 +60,9 @@ def build_rnn_model(word_index):
 
     # Output layer with sigmoid activation for multi-label classification
     output_layer = Dense(NUM_CLASSES, activation='sigmoid')(dense_layer)
+    output_layer = Dense(NUM_CLASSES, activation='sigmoid')(dense_layer)
 
-    # Create and compile model
+    # Create and compile a model
     model = Model(inputs=input_layer, outputs=output_layer)
     model.compile(loss='binary_crossentropy',
                  optimizer='adam',
@@ -63,7 +71,7 @@ def build_rnn_model(word_index):
     print(model.summary())
     return model
 
-def train_and_evaluate_rnn_model(train_data, train_labels, val_data, val_labels, test_data, test_labels):
+def train_and_evaluate_rnn_model(train_data, train_labels, val_data, val_labels, test_data, test_labels, word_index=None):
     """
     Train and evaluate the RNN model.
 
@@ -71,6 +79,7 @@ def train_and_evaluate_rnn_model(train_data, train_labels, val_data, val_labels,
         train_data, train_labels: Training data and labels
         val_data, val_labels: Validation data and labels
         test_data, test_labels: Test data and labels
+        word_index: Dictionary mapping words to indices (optional)
 
     Returns:
         Trained model and evaluation metrics
@@ -78,13 +87,17 @@ def train_and_evaluate_rnn_model(train_data, train_labels, val_data, val_labels,
     print("Training RNN model...")
 
     # Build the RNN model
-    word_index = len(np.unique(train_data)) + 1  # Approximation for this example
-    model = build_rnn_model(word_index)
+    if word_index is None:
+        # Fallback if word_index is not provided
+        vocab_size = len(np.unique(train_data)) + 1
+        model = build_rnn_model(vocab_size)
+    else:
+        model = build_rnn_model(word_index)
 
     # Define callbacks for early stopping and model checkpointing
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
-        ModelCheckpoint('rnn_model.h5', monitor='val_loss', save_best_only=True)
+        ModelCheckpoint('rnn_model.keras', monitor='val_loss', save_best_only=True)
     ]
 
     # Train the model
@@ -111,7 +124,7 @@ def train_and_evaluate_rnn_model(train_data, train_labels, val_data, val_labels,
     # Here's a simplified approach for demonstration
     for i in range(NUM_CLASSES):
         print(f"Emotion {i}:")
-        print(classification_report(test_labels[:, i], y_pred_binary[:, i]))
+        print(classification_report(test_labels[:, i], y_pred_binary[:, i], zero_division=0))
 
     # Plot training history
     plt.figure(figsize=(12, 4))

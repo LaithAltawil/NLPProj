@@ -12,6 +12,22 @@ All models are trained and evaluated on the GoEmotion dataset.
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import os
+
+# Configure GPU for training
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    print(f"Found {len(physical_devices)} GPU(s):")
+    for device in physical_devices:
+        print(f"  - {device.name}")
+        # Enable memory growth to avoid allocating all GPU memory at once
+        tf.config.experimental.set_memory_growth(device, True)
+
+    # Set TensorFlow to use the first GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    print("GPU training enabled")
+else:
+    print("No GPU found. Training will use CPU.")
 
 # Import from custom modules
 from data_utils import load_goemotion_dataset, preprocess_data_for_rnn, preprocess_data_for_bert, preprocess_data_for_roberta
@@ -45,7 +61,7 @@ def main():
 
     # Train and evaluate RNN model
     rnn_model, rnn_history, rnn_accuracy = train_and_evaluate_rnn_model(
-        rnn_train_data, rnn_train_labels, rnn_val_data, rnn_val_labels, rnn_test_data, rnn_test_labels
+        rnn_train_data, rnn_train_labels, rnn_val_data, rnn_val_labels, rnn_test_data, rnn_test_labels, word_index
     )
 
     # BERT Model

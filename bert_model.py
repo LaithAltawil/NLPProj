@@ -84,7 +84,7 @@ def train_and_evaluate_bert_model(train_encodings, train_labels, val_encodings, 
     # Define callbacks for early stopping and model checkpointing
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=2, restore_best_weights=True),
-        ModelCheckpoint('bert_model.h5', monitor='val_loss', save_best_only=True)
+        ModelCheckpoint('bert_model.keras', monitor='val_loss', save_best_only=True)
     ]
 
     # Create TensorFlow datasets for efficient training
@@ -126,7 +126,7 @@ def train_and_evaluate_bert_model(train_encodings, train_labels, val_encodings, 
     # Here's a simplified approach for demonstration
     for i in range(NUM_CLASSES):
         print(f"Emotion {i}:")
-        print(classification_report(test_labels[:, i], y_pred_binary[:, i]))
+        print(classification_report(test_labels[:, i], y_pred_binary[:, i], zero_division=0))
 
     # Plot training history
     plt.figure(figsize=(12, 4))
